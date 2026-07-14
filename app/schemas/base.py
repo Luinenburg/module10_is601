@@ -35,13 +35,12 @@ class PasswordMixin(BaseModel):
         return values
 
 
-class UserCreate(BaseModel):
+class UserCreate(PasswordMixin, BaseModel):
     """Schema for creating a new user"""
     username: str
     email: str
     first_name: str
     last_name: str
-    password: str
 
     model_config = ConfigDict(
         json_schema_extra={

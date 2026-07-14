@@ -1,6 +1,7 @@
 # tests/conftest.py
 
 import subprocess
+import sys
 import time
 import logging
 from typing import Generator, Dict, List
@@ -50,12 +51,14 @@ def create_fake_user() -> Dict[str, str]:
     Returns:
         A dict containing user fields with fake data.
     """
+    # Generate a plaintext password and store only the hashed value for model
+    plaintext = fake.password(length=12)
     return {
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "email": fake.unique.email(),  # Ensure uniqueness where necessary
         "username": fake.unique.user_name(),
-        "password": fake.password(length=12)
+        "password_hash": User.hash_password(plaintext)
     }
 
 @contextmanager
@@ -218,9 +221,10 @@ def fastapi_server():
     server_url = 'http://127.0.0.1:8000/'
     logger.info("Starting test server...")
 
+    process = None
     try:
         process = subprocess.Popen(
-            ['python', 'main.py'],
+            [sys.executable, 'main.py'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
@@ -235,13 +239,14 @@ def fastapi_server():
         raise
     finally:
         logger.info("Terminating test server...")
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-            logger.info("Test server terminated gracefully.")
-        except subprocess.TimeoutExpired:
-            logger.warning("Test server did not terminate in time; killing it.")
-            process.kill()
+        if process is not None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+                logger.info("Test server terminated gracefully.")
+            except subprocess.TimeoutExpired:
+                logger.warning("Test server did not terminate in time; killing it.")
+                process.kill()
 
 # ======================================================================================
 # Browser and Page Fixtures (Optional)

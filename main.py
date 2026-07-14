@@ -143,11 +143,15 @@ async def login_route(login_data: LoginRequest):
     """
     Authenticate a user and return an authentication token.
     """
-    if login_data.username == "admin" and login_data.password == "password":
-        token = "fake-jwt-token"
-        return LoginResponse(token=token)
-    else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Use a real DB session and the User.authenticate helper
+    db = database.SessionLocal()
+    try:
+        auth_result = User.authenticate(db, login_data.username, login_data.password)
+        if not auth_result:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        return LoginResponse(token=auth_result.get("access_token"))
+    finally:
+        db.close()
 
 @app.post("/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
 async def register_route(register_data: RegisterRequest):
@@ -174,6 +178,9 @@ async def register_route(register_data: RegisterRequest):
         })
         db.commit()
         return RegisterResponse(message="User registered successfully")
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         db.rollback()
         raise

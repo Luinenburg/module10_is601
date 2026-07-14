@@ -49,7 +49,7 @@ class User(Base):
 
     def verify_password(self, plain_password: str) -> bool:
         """Verify a plain password against the hashed password."""
-        return pwd_context.verify(plain_password, self.password)
+        return pwd_context.verify(plain_password, self.password_hash)
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
