@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator  # Use @validator for Pyd
 from fastapi.exceptions import RequestValidationError
 from app.operations import add, subtract, multiply, divide  # Ensure correct import path
 from app.database_init import init_db, drop_db
-#import app.user.User as User
+from app.models.user import User
 import app.database as database
 import uvicorn
 import logging
@@ -22,7 +22,6 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 init_db()
-db = database.get_db()
 
 # Pydantic model for request data
 class OperationRequest(BaseModel):
@@ -156,8 +155,30 @@ async def register_route(register_data: RegisterRequest):
     Register a new user.
     """
     # Placeholder for actual registration logic
-    # User.register(db, )
-    return RegisterResponse(message="User registered successfully")
+    new_user = User(
+        username=register_data.username,
+        password_hash=register_data.password,
+        email=register_data.email,
+        first_name=register_data.fname,
+        last_name=register_data.lname
+    )
+    # Obtain a real Session instance (get_db() is a generator for FastAPI deps)
+    db = database.SessionLocal()
+    try:
+        new_user.register(db, {
+            "first_name": register_data.fname,
+            "last_name": register_data.lname,
+            "email": register_data.email,
+            "username": register_data.username,
+            "password": register_data.password
+        })
+        db.commit()
+        return RegisterResponse(message="User registered successfully")
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

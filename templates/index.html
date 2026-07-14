@@ -369,7 +369,7 @@
                 }
             } catch (error) {
                 console.error('Fetch error:', error);
-                resultElement.innerText = 'Error: ' + error.message;
+                resultElement.innerText = resultElement.innerText +'\nError: ' + error.message;
             }
         }
     </script>
