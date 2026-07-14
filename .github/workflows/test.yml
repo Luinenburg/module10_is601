@@ -99,8 +99,8 @@ jobs:
         with:
           push: true
           tags: |
-            Luinenburg/module10_is601:latest
-            Luinenburg/module10_is601:${{ github.sha }}
+            sudsysoapy/is218:latest
+            sudsysoapy/is218:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
-          #cache-from: type=registry,ref=Luinenburg/module10_is601:cache
-          #cache-to: type=inline,mode=max
+          cache-from: type=registry,ref=sudsysoapy/is218:cache
+          cache-to: type=inline,mode=max
