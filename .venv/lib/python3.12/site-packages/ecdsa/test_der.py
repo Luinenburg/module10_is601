@@ -22,8 +22,10 @@ from .der import (
     remove_object,
     encode_oid,
     remove_constructed,
+    remove_implicit,
     remove_octet_string,
     remove_sequence,
+    encode_implicit,
 )
 
 
@@ -396,6 +398,128 @@ class TestRemoveConstructed(unittest.TestCase):
         self.assertIn("constructed tag", str(e.exception))
 
 
+class TestRemoveImplicit(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.exp_tag = 6
+        cls.exp_data = b"\x0a\x0b"
+        # data with application tag class
+        cls.data_application = b"\x46\x02\x0a\x0b"
+        # data with context-specific tag class
+        cls.data_context_specific = b"\x86\x02\x0a\x0b"
+        # data with private tag class
+        cls.data_private = b"\xc6\x02\x0a\x0b"
+
+    def test_simple(self):
+        tag, body, rest = remove_implicit(self.data_context_specific)
+
+        self.assertEqual(tag, self.exp_tag)
+        self.assertEqual(body, self.exp_data)
+        self.assertEqual(rest, b"")
+
+    def test_wrong_expected_class(self):
+        with self.assertRaises(ValueError) as e:
+            remove_implicit(self.data_context_specific, "foobar")
+
+        self.assertIn("invalid `exp_class` value", str(e.exception))
+
+    def test_with_wrong_class(self):
+        with self.assertRaises(UnexpectedDER) as e:
+            remove_implicit(self.data_application)
+
+        self.assertIn(
+            "wanted class context-specific, got 0x46 tag", str(e.exception)
+        )
+
+    def test_with_application_class(self):
+        tag, body, rest = remove_implicit(self.data_application, "application")
+
+        self.assertEqual(tag, self.exp_tag)
+        self.assertEqual(body, self.exp_data)
+        self.assertEqual(rest, b"")
+
+    def test_with_private_class(self):
+        tag, body, rest = remove_implicit(self.data_private, "private")
+
+        self.assertEqual(tag, self.exp_tag)
+        self.assertEqual(body, self.exp_data)
+        self.assertEqual(rest, b"")
+
+    def test_with_data_following(self):
+        extra_data = b"\x00\x01"
+
+        tag, body, rest = remove_implicit(
+            self.data_context_specific + extra_data
+        )
+
+        self.assertEqual(tag, self.exp_tag)
+        self.assertEqual(body, self.exp_data)
+        self.assertEqual(rest, extra_data)
+
+    def test_with_constructed(self):
+        data = b"\xa6\x02\x0a\x0b"
+
+        with self.assertRaises(UnexpectedDER) as e:
+            remove_implicit(data)
+
+        self.assertIn("wanted type primitive, got 0xa6 tag", str(e.exception))
+
+    def test_encode_decode(self):
+        data = b"some longish string"
+
+        tag, body, rest = remove_implicit(
+            encode_implicit(6, data, "application"), "application"
+        )
+
+        self.assertEqual(tag, 6)
+        self.assertEqual(body, data)
+        self.assertEqual(rest, b"")
+
+
+class TestEncodeImplicit(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data = b"\x0a\x0b"
+        # data with application tag class
+        cls.data_application = b"\x46\x02\x0a\x0b"
+        # data with context-specific tag class
+        cls.data_context_specific = b"\x86\x02\x0a\x0b"
+        # data with private tag class
+        cls.data_private = b"\xc6\x02\x0a\x0b"
+
+    def test_encode_with_default_class(self):
+        ret = encode_implicit(6, self.data)
+
+        self.assertEqual(ret, self.data_context_specific)
+
+    def test_encode_with_application_class(self):
+        ret = encode_implicit(6, self.data, "application")
+
+        self.assertEqual(ret, self.data_application)
+
+    def test_encode_with_context_specific_class(self):
+        ret = encode_implicit(6, self.data, "context-specific")
+
+        self.assertEqual(ret, self.data_context_specific)
+
+    def test_encode_with_private_class(self):
+        ret = encode_implicit(6, self.data, "private")
+
+        self.assertEqual(ret, self.data_private)
+
+    def test_encode_with_invalid_class(self):
+        with self.assertRaises(ValueError) as e:
+            encode_implicit(6, self.data, "foobar")
+
+        self.assertIn("invalid tag class", str(e.exception))
+
+    def test_encode_with_too_large_tag(self):
+        with self.assertRaises(ValueError) as e:
+            encode_implicit(32, self.data)
+
+        self.assertIn("Long tags not supported", str(e.exception))
+
+
 class TestRemoveOctetString(unittest.TestCase):
     def test_simple(self):
         data = b"\x04\x03\xaa\xbb\xcc"
@@ -476,3 +600,23 @@ def test_oids(ids):
     decoded_oid, rest = remove_object(encoded_oid)
     assert rest == b""
     assert decoded_oid == ids
+
+def test_remove_octet_string_rejects_truncated_length():
+    # OCTET STRING: declared length 4096, but only 3 bytes present
+    bad = b"\x04\x82\x10\x00" + b"ABC"
+    with pytest.raises(UnexpectedDER, match="Length longer than the provided buffer"):
+        remove_octet_string(bad)
+
+def test_remove_constructed_rejects_truncated_length():
+    # Constructed tag: 0xA0 (context-specific constructed, tag=0)
+    # declared length 4096, but only 3 bytes present
+    bad = b"\xA0\x82\x10\x00" + b"ABC"
+    with pytest.raises(UnexpectedDER, match="Length longer than the provided buffer"):
+        remove_constructed(bad)
+
+def test_remove_implicit_rejects_truncated_length():
+    # IMPLICIT primitive context-specific tag 0: 0x80
+    # declared length 4096, but only 3 bytes present
+    bad = b"\x80\x82\x10\x00" + b"ABC"
+    with pytest.raises(UnexpectedDER, match="Length longer than the provided buffer"):
+        remove_implicit(bad)
