@@ -35,9 +35,25 @@ class PasswordMixin(BaseModel):
         return values
 
 
-class UserCreate(UserBase, PasswordMixin):
-    """Schema for user creation"""
-    pass
+class UserCreate(BaseModel):
+    """Schema for creating a new user"""
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    password: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "johndoe123",
+                "email": "john.doe@example.com",
+                "first_name": "John",
+                "last_name": "Doe",
+                "password": "SecurePass123",
+            }
+        }
+    )
 
 
 class UserLogin(PasswordMixin):

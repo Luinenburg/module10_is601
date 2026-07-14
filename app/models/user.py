@@ -31,7 +31,8 @@ class User(Base):
     last_name = Column(String(50), nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     username = Column(String(50), unique=True, nullable=False)
-    password = Column(String(255), nullable=False)
+    #password = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     last_login = Column(DateTime, nullable=True)
@@ -95,7 +96,7 @@ class User(Base):
                 last_name=user_create.last_name,
                 email=user_create.email,
                 username=user_create.username,
-                password=cls.hash_password(user_create.password),
+                password_hash=cls.hash_password(user_create.password),
                 is_active=True,
                 is_verified=False
             )

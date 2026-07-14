@@ -63,3 +63,17 @@ class UserLogin(BaseModel):
             }
         }
     )
+
+class UserRead(BaseModel):
+    """Schema for reading user data"""
+    id: UUID
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)  # Enable mapping from ORM objects
