@@ -117,7 +117,10 @@
     
     <h1>Hello World</h1><br>
     <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password"><br>
+    <input type="password" id="password" placeholder="Password">
+    <input type="text" id="fname" placeholder="First Name">
+    <input type="text" id="lname" placeholder="Last Name">
+    <input type="text" id="email" placeholder="Email"><br>
     <button onclick="login()">Login</button>
     <button onclick="register()">Register</button>
     <!--
@@ -345,13 +348,16 @@
         async function register() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const fname = document.getElementById('fname').value;
+            const lname = document.getElementById('lname').value;
             const resultElement = document.getElementById('result');
 
             try {
                 const response = await fetch('/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password, email, fname, lname })
                 });
 
                 const data = await response.json();

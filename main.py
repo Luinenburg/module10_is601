@@ -6,6 +6,9 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator  # Use @validator for Pydantic 1.x
 from fastapi.exceptions import RequestValidationError
 from app.operations import add, subtract, multiply, divide  # Ensure correct import path
+from app.database_init import init_db, drop_db
+#import app.user.User as User
+import app.database as database
 import uvicorn
 import logging
 
@@ -17,6 +20,9 @@ app = FastAPI()
 
 # Setup templates directory
 templates = Jinja2Templates(directory="templates")
+
+init_db()
+db = database.get_db()
 
 # Pydantic model for request data
 class OperationRequest(BaseModel):
@@ -36,6 +42,9 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str = Field(..., description="The username")
     password: str = Field(..., description="The password")
+    email: str = Field(..., description="The email")
+    fname: str = Field(..., description="The first name")
+    lname: str = Field(..., description="The last name")
 
 # Pydantic model for successful response
 class OperationResponse(BaseModel):
@@ -147,6 +156,7 @@ async def register_route(register_data: RegisterRequest):
     Register a new user.
     """
     # Placeholder for actual registration logic
+    # User.register(db, )
     return RegisterResponse(message="User registered successfully")
 
 if __name__ == "__main__":
