@@ -115,7 +115,11 @@
         web page and visible to users.
     -->
     
-    <h1>Hello World</h1>
+    <h1>Hello World</h1><br>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
     <!--
         <h1> Tag: Heading
         
@@ -309,6 +313,55 @@
                     
                     - resultElement.innerText: Updates the text inside the result <div> to display the error message.
                 */
+                console.error('Fetch error:', error);
+                resultElement.innerText = 'Error: ' + error.message;
+            }
+        }
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultElement = document.getElementById('result');
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultElement.innerText = 'Login successful. Token: ' + data.token;
+                } else {
+                    resultElement.innerText = 'Error: ' + data.error;
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                resultElement.innerText = 'Error: ' + error.message;
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultElement = document.getElementById('result');
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultElement.innerText = 'Registration successful. Message: ' + data.message;
+                } else {
+                    resultElement.innerText = 'Error: ' + data.error;
+                }
+            } catch (error) {
                 console.error('Fetch error:', error);
                 resultElement.innerText = 'Error: ' + error.message;
             }

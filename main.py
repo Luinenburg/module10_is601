@@ -29,6 +29,14 @@ class OperationRequest(BaseModel):
             raise ValueError('Both a and b must be numbers.')
         return value
 
+class LoginRequest(BaseModel):
+    username: str = Field(..., description="The username")
+    password: str = Field(..., description="The password")
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., description="The username")
+    password: str = Field(..., description="The password")
+
 # Pydantic model for successful response
 class OperationResponse(BaseModel):
     result: float = Field(..., description="The result of the operation")
@@ -36,6 +44,14 @@ class OperationResponse(BaseModel):
 # Pydantic model for error response
 class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
+
+# Response for logins
+class LoginResponse(BaseModel):
+    token: str = Field(..., description="Authentication token")
+
+# Response for logins
+class RegisterResponse(BaseModel):
+    message: str = Field(..., description="Registration message")
 
 # Custom Exception Handlers
 @app.exception_handler(HTTPException)
@@ -113,6 +129,25 @@ async def divide_route(operation: OperationRequest):
     except Exception as e:
         logger.error(f"Divide Operation Internal Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.post("/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
+async def login_route(login_data: LoginRequest):
+    """
+    Authenticate a user and return an authentication token.
+    """
+    if login_data.username == "admin" and login_data.password == "password":
+        token = "fake-jwt-token"
+        return LoginResponse(token=token)
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.post("/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
+async def register_route(register_data: RegisterRequest):
+    """
+    Register a new user.
+    """
+    # Placeholder for actual registration logic
+    return RegisterResponse(message="User registered successfully")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
