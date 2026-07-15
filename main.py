@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from app.operations import add, subtract, multiply, divide  # Ensure correct import path
 from app.database_init import init_db, drop_db
 from app.models.user import User
+from app.models.calculation import Calculation
 import app.database as database
 import uvicorn
 import logging
@@ -21,7 +22,9 @@ app = FastAPI()
 # Setup templates directory
 templates = Jinja2Templates(directory="templates")
 
-init_db()
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 # Pydantic model for request data
 class OperationRequest(BaseModel):
@@ -61,6 +64,12 @@ class LoginResponse(BaseModel):
 class RegisterResponse(BaseModel):
     message: str = Field(..., description="Registration message")
 
+def SaveCalculation(calculation_data):
+    db = database.SessionLocal()
+    calculation = Calculation.create(db, calculation_data)
+    db.commit()
+    return calculation
+
 # Custom Exception Handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -94,6 +103,7 @@ async def add_route(operation: OperationRequest):
     """
     try:
         result = add(operation.a, operation.b)
+        SaveCalculation({"a": operation.a, "b": operation.b, "calculation_type": "add", "result": result})
         return OperationResponse(result=result)
     except Exception as e:
         logger.error(f"Add Operation Error: {str(e)}")
@@ -106,6 +116,7 @@ async def subtract_route(operation: OperationRequest):
     """
     try:
         result = subtract(operation.a, operation.b)
+        SaveCalculation({"a": operation.a, "b": operation.b, "calculation_type": "subtract", "result": result})
         return OperationResponse(result=result)
     except Exception as e:
         logger.error(f"Subtract Operation Error: {str(e)}")
@@ -118,6 +129,7 @@ async def multiply_route(operation: OperationRequest):
     """
     try:
         result = multiply(operation.a, operation.b)
+        SaveCalculation({"a": operation.a, "b": operation.b, "calculation_type": "multiply", "result": result})
         return OperationResponse(result=result)
     except Exception as e:
         logger.error(f"Multiply Operation Error: {str(e)}")
@@ -130,6 +142,7 @@ async def divide_route(operation: OperationRequest):
     """
     try:
         result = divide(operation.a, operation.b)
+        SaveCalculation({"a": operation.a, "b": operation.b, "calculation_type": "divide", "result": result})
         return OperationResponse(result=result)
     except ValueError as e:
         logger.error(f"Divide Operation Error: {str(e)}")

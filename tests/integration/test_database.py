@@ -4,8 +4,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm.session import Session
+from sqlalchemy import inspect
 import importlib
 import sys
+
+from app.models.calculation import Calculation
 
 DATABASE_MODULE = "app.database"
 
@@ -53,3 +56,31 @@ def test_get_sessionmaker(mock_settings):
     engine = database.get_engine()
     SessionLocal = database.get_sessionmaker(engine)
     assert isinstance(SessionLocal, sessionmaker)
+
+
+def test_calculations_table_exists(db_session):
+    """Test that the calculations table is created in the database."""
+    inspector = inspect(db_session.bind)
+    assert "calculations" in inspector.get_table_names()
+
+
+def test_calculation_can_be_created_and_retrieved(db_session):
+    """Test that a calculation record can be inserted and later read back."""
+    payload = {
+        "a": 7,
+        "b": 3,
+        "calculation_type": "add",
+        "result": 10,
+    }
+
+    calculation = Calculation.create(db_session, payload)
+    db_session.add(calculation)
+    db_session.commit()
+    db_session.refresh(calculation)
+
+    saved = db_session.query(Calculation).filter_by(calculation_type="add").first()
+    assert saved is not None
+    assert saved.a == 7
+    assert saved.b == 3
+    assert saved.result == 10
+    assert saved.user_id is None
