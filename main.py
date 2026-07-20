@@ -64,6 +64,10 @@ class LoginResponse(BaseModel):
 class RegisterResponse(BaseModel):
     message: str = Field(..., description="Registration message")
 
+class SessionResponse(BaseModel):
+    token: str = Field(..., description="JWT token")
+    user_id: str = Field(..., description="User ID associated with the token")
+
 def SaveCalculation(calculation_data):
     db = database.SessionLocal()
     calculation = Calculation.create(db, calculation_data)
@@ -151,7 +155,7 @@ async def divide_route(operation: OperationRequest):
         logger.error(f"Divide Operation Internal Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.post("/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
+@app.post("/users/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
 async def login_route(login_data: LoginRequest):
     """
     Authenticate a user and return an authentication token.
@@ -166,7 +170,7 @@ async def login_route(login_data: LoginRequest):
     finally:
         db.close()
 
-@app.post("/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
+@app.post("/users/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
 async def register_route(register_data: RegisterRequest):
     """
     Register a new user.
@@ -197,6 +201,97 @@ async def register_route(register_data: RegisterRequest):
     except Exception:
         db.rollback()
         raise
+    finally:
+        db.close()
+
+@app.get("/calculations/{user_id}", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
+async def get_user_calculations(user_id: str):
+    """
+    Retrieve all calculations for a specific user.
+    """
+    db = database.SessionLocal()
+    try:
+        calculations = Calculation.get_user_calculation(db, user_id)
+        if not calculations:
+            raise HTTPException(status_code=404, detail="No calculations found for this user")
+        return [OperationResponse(result=calc.result) for calc in calculations]
+    finally:
+        db.close()
+
+@app.get("/calculations", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
+async def get_all_calculations():
+    """
+    Retrieve all calculations.
+    """
+    db = database.SessionLocal()
+    try:
+        calculations = db.query(Calculation).all()
+        if not calculations:
+            raise HTTPException(status_code=404, detail="No calculations found")
+        return [OperationResponse(result=calc.result) for calc in calculations]
+    finally:
+        db.close()
+
+@app.patch("/calculations/{calculation_id}", response_model=OperationResponse, responses={404: {"model": ErrorResponse}})
+async def update_calculation(calculation_id: str, operation: OperationRequest):
+    """
+    Update a specific calculation by ID.
+    """
+    db = database.SessionLocal()
+    try:
+        calculation = Calculation.get_by_id(db, calculation_id)
+        if not calculation:
+            raise HTTPException(status_code=404, detail="Calculation not found")
+        
+        # Update the calculation fields
+        calculation.a = operation.a
+        calculation.b = operation.b
+        # Assuming you want to recalculate the result based on the type
+        if calculation.calculation_type == "add":
+            calculation.result = add(operation.a, operation.b)
+        elif calculation.calculation_type == "subtract":
+            calculation.result = subtract(operation.a, operation.b)
+        elif calculation.calculation_type == "multiply":
+            calculation.result = multiply(operation.a, operation.b)
+        elif calculation.calculation_type == "divide":
+            try:
+                calculation.result = divide(operation.a, operation.b)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+        
+        db.commit()
+        return OperationResponse(result=calculation.result)
+    finally:
+        db.close()
+
+@app.delete("/calculations/{calculation_id}", response_model=OperationResponse, responses={404: {"model": ErrorResponse}})
+async def delete_calculation(calculation_id: str):
+    """
+    Delete a specific calculation by ID.
+    """
+    db = database.SessionLocal()
+    try:
+        calculation = Calculation.get_by_id(db, calculation_id)
+        if not calculation:
+            raise HTTPException(status_code=404, detail="Calculation not found")
+        
+        db.delete(calculation)
+        db.commit()
+        return OperationResponse(result=calculation.result)
+    finally:
+        db.close()
+
+@app.post("/users/verify-token", response_model=SessionResponse, responses={401: {"model": ErrorResponse}})
+async def verify_token_route(token_data: SessionResponse):
+    """
+    Verify a JWT token and return the associated user ID.
+    """
+    db = database.SessionLocal()
+    try:
+        user = User.find_token_in_users(db, token_data.condition)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return SessionResponse(token=token_data.condition, user_id=str(user.id))
     finally:
         db.close()
 
