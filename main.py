@@ -170,6 +170,12 @@ async def login_route(login_data: LoginRequest):
     finally:
         db.close()
 
+
+# Backwards-compatible aliases for older endpoints used by tests
+@app.post("/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
+async def login_short(login_data: LoginRequest):
+    return await login_route(login_data)
+
 @app.post("/users/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
 async def register_route(register_data: RegisterRequest):
     """
@@ -203,6 +209,11 @@ async def register_route(register_data: RegisterRequest):
         raise
     finally:
         db.close()
+
+
+@app.post("/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
+async def register_short(register_data: RegisterRequest):
+    return await register_route(register_data)
 
 @app.get("/calculations/{user_id}", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
 async def get_user_calculations(user_id: str):
