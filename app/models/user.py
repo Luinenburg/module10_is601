@@ -66,6 +66,14 @@ class User(Base):
             return uuid.UUID(user_id) if user_id else None
         except (JWTError, ValueError):
             return None
+    
+    @staticmethod
+    def find_token_in_users(db, token: str) -> Optional["User"]:
+        """Find a user by their JWT token."""
+        user_id = User.verify_token(token)
+        if user_id is None:
+            return None
+        return db.query(User).filter(User.id == user_id).first()
 
     @classmethod
     def register(cls, db, user_data: Dict[str, Any]) -> "User":
