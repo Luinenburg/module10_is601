@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!--
+    Document Type Declaration (DOCTYPE)
+    
+    The <!DOCTYPE html> declaration defines the document type and version of HTML.
+    It ensures that the browser interprets the document as an HTML5 document.
+    This declaration is mandatory and should be the very first line in your HTML document.
+-->
+
+<html lang="en">
+<!--
+    <html> Tag
+    
+    The <html> element is the root element of an HTML page. It encapsulates all other elements
+    within the document. The lang="en" attribute specifies that the language of the document is English,
+    which aids in accessibility and SEO (Search Engine Optimization).
+-->
+<head>
+    <!--
+        <head> Section
+        
+        The <head> element contains meta-information about the HTML document, such as its title,
+        character set, linked resources like CSS and JavaScript files, and other metadata.
+        This information is not displayed directly on the web page.
+    -->
+    
+    <meta charset="UTF-8">
+    <!--
+        <meta> Tag: Character Set
+        
+        The <meta charset="UTF-8"> tag specifies the character encoding for the HTML document.
+        UTF-8 is a widely used encoding that supports virtually all characters from all languages,
+        ensuring that text is rendered correctly.
+    -->
+    
+    <title>Hello World & Calculator Demo</title>
+    <!--
+        <title> Tag
+        
+        The <title> element defines the title of the HTML document, which appears in the browser's
+        title bar or tab. It is also used by search engines to understand the content of the page.
+    -->
+    
+    <style>
+        /*
+            <style> Section: CSS Styles
+            
+            The <style> element allows you to embed CSS (Cascading Style Sheets) directly within
+            the HTML document. CSS is used to style and layout web pages, controlling aspects
+            like colors, fonts, spacing, and positioning.
+        */
+        
+        body {
+            /* 
+                Styles for the <body> Element
+                
+                - font-family: Sets the font for the entire page to Arial, sans-serif.
+                - text-align: Centers the text horizontally.
+                - margin-top: Adds a 50-pixel margin at the top of the page for spacing.
+            */
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        .calculator {
+            /* 
+                Styles for Elements with the "calculator" Class
+                
+                - margin-top: Adds a 30-pixel margin above the calculator section to separate it
+                  from other content.
+            */
+            margin-top: 30px;
+        }
+        
+        input {
+            /* 
+                Styles for <input> Elements
+                
+                - margin: Adds a 5-pixel margin around input fields for spacing.
+                - padding: Adds a 5-pixel padding inside input fields for better readability.
+            */
+            margin: 5px;
+            padding: 5px;
+        }
+        
+        button {
+            /* 
+                Styles for <button> Elements
+                
+                - padding: Adds 5 pixels of vertical padding and 10 pixels of horizontal padding
+                  inside buttons to make them larger and more clickable.
+            */
+            padding: 5px 10px;
+        }
+        
+        .result {
+            /* 
+                Styles for Elements with the "result" Class
+                
+                - margin-top: Adds a 10-pixel margin above the result display area.
+                - font-weight: Makes the text bold to emphasize the result.
+            */
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="error" id="error"></div>
+    <div class="result" id="result"></div>
+    <button onclick="window.location.href='/'">To Dashboard</button>
+    <script>
+        ErrorElement = document.getElementById('error');
+        if (!localStorage.getItem('auth_token')) {
+            ErrorElement.innerText = 'No token found. Please log in first.';
+        } else {
+            const token = localStorage.getItem('auth_token');
+            fetch('/users/verify-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                'body': JSON.stringify({ token: token })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    localStorage.removeItem('auth_token');
+                    ErrorElement.innerText = 'Invalid or expired token.' + response.statusText;
+                } else {
+                    ErrorElement.innerText = 'Token is valid. Redirecting to calculator...';
+                    window.location.href = '/calculator';
+                }
+            })
+            .catch(error => {
+                console.error('Error verifying token:', error);
+                localStorage.removeItem('auth_token');
+                ErrorElement.innerText = 'Error verifying token.' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>

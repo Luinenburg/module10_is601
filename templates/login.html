@@ -32,12 +32,10 @@
 </head>
 <body>
     <h1>User Login</h1>
-    <form id="loginForm">
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="password" placeholder="Password" required><br>
-        <button type="submit">Login</button>
-    </form>
-    <a href="index.html"><button>return</button></a>
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button type="login" onclick="login()">Login</button>
+    <a href="/"><button>return</button></a>
     <div class="result" id="result"></div>
 
     <script>
@@ -57,6 +55,7 @@
 
                 if (response.ok) {
                     resultElement.innerText = 'Login successful. Token: ' + data.token;
+                    localStorage.setItem('auth_token', data.token);
                 } else {
                     resultElement.innerText = 'Error: ' + data.error;
                 }
@@ -65,10 +64,5 @@
                 resultElement.innerText = 'Error: ' + error.message;
             }
         }
-
-        document.getElementById('registrationForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            login();
-        });
     </script>
+</body>

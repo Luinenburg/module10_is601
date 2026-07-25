@@ -66,7 +66,7 @@ class RegisterResponse(BaseModel):
 
 class SessionResponse(BaseModel):
     token: str = Field(..., description="JWT token")
-    user_id: str = Field(..., description="User ID associated with the token")
+    username: str = Field(..., description="Username associated with the token")
 
 def SaveCalculation(calculation_data):
     db = database.SessionLocal()
@@ -99,6 +99,32 @@ async def read_root(request: Request):
     Serve the index.html template.
     """
     return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/login")
+async def read_login(request: Request):
+    """
+    Serve the login.html template.
+    """
+    return templates.TemplateResponse("login.html", {"request": request})
+@app.get("/register")
+async def read_register(request: Request):
+    """
+    Serve the register.html template.
+    """
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.get("/calculator")
+async def read_calc(request: Request):
+    """
+    Serve the calculator.html template.
+    """
+    return templates.TemplateResponse("calculator.html", {"request": request})
+
+@app.get("/auth")
+async def read_auth(request: Request):
+    """
+    Serve the auth.html template.
+    """
+    return templates.TemplateResponse("auth.html", {"request": request})
 
 @app.post("/add", response_model=OperationResponse, responses={400: {"model": ErrorResponse}})
 async def add_route(operation: OperationRequest):
@@ -170,12 +196,6 @@ async def login_route(login_data: LoginRequest):
     finally:
         db.close()
 
-
-# Backwards-compatible aliases for older endpoints used by tests
-@app.post("/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
-async def login_short(login_data: LoginRequest):
-    return await login_route(login_data)
-
 @app.post("/users/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
 async def register_route(register_data: RegisterRequest):
     """
@@ -209,11 +229,6 @@ async def register_route(register_data: RegisterRequest):
         raise
     finally:
         db.close()
-
-
-@app.post("/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
-async def register_short(register_data: RegisterRequest):
-    return await register_route(register_data)
 
 @app.get("/calculations/{user_id}", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
 async def get_user_calculations(user_id: str):
@@ -293,16 +308,16 @@ async def delete_calculation(calculation_id: str):
         db.close()
 
 @app.post("/users/verify-token", response_model=SessionResponse, responses={401: {"model": ErrorResponse}})
-async def verify_token_route(token_data: SessionResponse):
+async def verify_token_route(token_data: LoginResponse):
     """
     Verify a JWT token and return the associated user ID.
     """
     db = database.SessionLocal()
     try:
-        user = User.find_token_in_users(db, token_data.condition)
+        user = User.find_token_in_users(db, token_data.token)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
-        return SessionResponse(token=token_data.condition, user_id=str(user.id))
+        return SessionResponse(token=token_data.token, username=user.username)
     finally:
         db.close()
 

@@ -32,15 +32,13 @@
 </head>
 <body>
     <h1>User Registration</h1>
-    <form id="registrationForm">
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="password" placeholder="Password" required><br>
-        <input type="email" id="email" placeholder="Email" required><br>
-        <input type="text" id="fname" placeholder="First Name" required>
-        <input type="text" id="lname" placeholder="Last Name" required><br>
-        <button type="submit">Register</button>
-    </form>
-    <a href="index.html"><button>return</button></a>
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="text" id="fname" placeholder="First Name" required>
+    <input type="text" id="lname" placeholder="Last Name" required><br>
+    <button type="submit" onclick="register()">Register</button>
+    <a href="/"><button>return</button></a>
     <div class="result" id="result"></div>
 
     <script>
@@ -71,11 +69,5 @@
                 resultElement.innerText = resultElement.innerText +'\nError: ' + error.message;
             }
         }
-
-        document.getElementById('registrationForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            register();
-            window.location.replace("index.html");
-        });
     </script>
+</body>
