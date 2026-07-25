@@ -99,6 +99,24 @@ async def read_root(request: Request):
     Serve the index.html template.
     """
     return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/login")
+async def read_login(request: Request):
+    """
+    Serve the login.html template.
+    """
+    return templates.TemplateResponse("login.html", {"request": request})
+@app.get("/register")
+async def read_register(request: Request):
+    """
+    Serve the register.html template.
+    """
+    return templates.TemplateResponse("register.html", {"request": request})
+@app.get("/calculator")
+async def read_calc(request: Request):
+    """
+    Serve the calculator.html template.
+    """
+    return templates.TemplateResponse("calculator.html", {"request": request})
 
 @app.post("/add", response_model=OperationResponse, responses={400: {"model": ErrorResponse}})
 async def add_route(operation: OperationRequest):
@@ -170,12 +188,6 @@ async def login_route(login_data: LoginRequest):
     finally:
         db.close()
 
-
-# Backwards-compatible aliases for older endpoints used by tests
-@app.post("/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
-async def login_short(login_data: LoginRequest):
-    return await login_route(login_data)
-
 @app.post("/users/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
 async def register_route(register_data: RegisterRequest):
     """
@@ -209,11 +221,6 @@ async def register_route(register_data: RegisterRequest):
         raise
     finally:
         db.close()
-
-
-@app.post("/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
-async def register_short(register_data: RegisterRequest):
-    return await register_route(register_data)
 
 @app.get("/calculations/{user_id}", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
 async def get_user_calculations(user_id: str):
