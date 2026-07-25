@@ -1,0 +1,81 @@
+<!DOCTYPE html> 
+
+<html lang="en">
+<head>
+    
+    <meta charset="UTF-8">
+
+    <title>User Registration to save all your calculations!!! (wow)</title>
+    
+    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        input {
+            margin: 5px;
+            padding: 5px;
+        }
+        
+        button {
+            padding: 5px 10px;
+        }
+        
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Registration</h1>
+    <form id="registrationForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <input type="email" id="email" placeholder="Email" required><br>
+        <input type="text" id="fname" placeholder="First Name" required>
+        <input type="text" id="lname" placeholder="Last Name" required><br>
+        <button type="submit">Register</button>
+    </form>
+    <a href="index.html"><button>return</button></a>
+    <div class="result" id="result"></div>
+
+    <script>
+            async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const fname = document.getElementById('fname').value;
+            const lname = document.getElementById('lname').value;
+            const resultElement = document.getElementById('result');
+
+            try {
+                const response = await fetch('/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, email, fname, lname })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultElement.innerText = 'Registration successful. Message: ' + data.message;
+                } else {
+                    resultElement.innerText = 'Error: ' + data.error;
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                resultElement.innerText = resultElement.innerText +'\nError: ' + error.message;
+            }
+        }
+
+        document.getElementById('registrationForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            register();
+            window.location.replace("index.html");
+        });
+    </script>

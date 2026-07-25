@@ -1,0 +1,74 @@
+<!DOCTYPE html> 
+
+<html lang="en">
+<head>
+    
+    <meta charset="UTF-8">
+
+    <title>User Registration to save all your calculations!!! (wow)</title>
+    
+    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        input {
+            margin: 5px;
+            padding: 5px;
+        }
+        
+        button {
+            padding: 5px 10px;
+        }
+        
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Login</h1>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+    </form>
+    <a href="index.html"><button>return</button></a>
+    <div class="result" id="result"></div>
+
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultElement = document.getElementById('result');
+
+            try {
+                const response = await fetch('/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultElement.innerText = 'Login successful. Token: ' + data.token;
+                } else {
+                    resultElement.innerText = 'Error: ' + data.error;
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                resultElement.innerText = 'Error: ' + error.message;
+            }
+        }
+
+        document.getElementById('registrationForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            login();
+        });
+    </script>
