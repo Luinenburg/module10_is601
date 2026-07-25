@@ -12,6 +12,61 @@ def wait_for_result(page, expected_prefix):
         page.wait_for_timeout(250)
     raise AssertionError(f"Timed out waiting for result to start with {expected_prefix!r}")
 
+@pytest.mark.e2e
+def test_register_short_pass(page, fastapi_server):
+    """
+    Test the registration functionality with a short password.
+
+    This test simulates a user attempting to register with a password that is too short.
+    It fills in the registration form with valid data except for the password, which is
+    intentionally set to be shorter than the required length. The test then submits the
+    form and checks that the appropriate error message is displayed, ensuring that the
+    application correctly enforces password length requirements.
+    """
+
+    page.goto('http://localhost:8000/register')
+    page.fill('#username', 'testuser')
+    page.fill('#password', '123')  # Short password
+    page.fill('#email', 'testuser@example.com')
+    page.fill('#fname', 'Test')
+    page.fill('#lname', 'User')
+    page.click('button:text("Register")')
+    wait_for_result(page, 'Error:')
+
+@pytest.mark.e2e
+def test_register(page, fastapi_server):
+
+    page.goto('http://localhost:8000/register')
+    page.fill('#username', 'testuser')
+    page.fill('#password', '123Password')  # Valid password
+    page.fill('#email', 'testuser@example.com')
+    page.fill('#fname', 'Test')
+    page.fill('#lname', 'User')
+    page.click('button:text("Register")')
+    wait_for_result(page, 'Registration successful. Message:')
+
+@pytest.mark.e2e
+def test_login(page, fastapi_server):
+    """
+    Test the login functionality of the application.
+
+    This test simulates a user attempting to log in with valid credentials. It fills in
+    the login form with a username and password, submits the form, and checks that the
+    appropriate success message is displayed. This ensures that the login process works
+    correctly and that users can authenticate successfully.
+    """
+    page.goto('http://localhost:8000/login')
+    page.fill('#username', 'testuser')
+    page.fill('#password', '123Password')  # Assuming this is the correct password for testuser
+    page.click('button:text("Login")')
+    wait_for_result(page, 'Login successful. Token:')
+
+def login(page):
+    page.goto('http://localhost:8000/login')
+    page.fill('#username', 'testuser')
+    page.fill('#password', '123Password')  # Assuming this is the correct password for testuser
+    page.click('button:text("Login")')
+
 # The following decorators and functions define E2E tests for the FastAPI calculator application.
 
 @pytest.mark.e2e
@@ -28,7 +83,7 @@ def test_hello_world(page, fastapi_server):
     
     # Use an assertion to check that the text within the first <h1> tag is exactly "Hello World".
     # If the text does not match, the test will fail.
-    assert page.inner_text('h1') == 'Hello World'
+    assert page.inner_text('h1') == 'Dashboard'
 
 @pytest.mark.e2e
 def test_calculator_add(page, fastapi_server):
@@ -40,7 +95,8 @@ def test_calculator_add(page, fastapi_server):
     that the result displayed is correct.
     """
     # Navigate the browser to the homepage URL of the FastAPI application.
-    page.goto('http://localhost:8000')
+    login(page)  # Log in before accessing the calculator
+    page.goto('http://localhost:8000/calculator')
     
     # Fill in the first number input field (with id 'a') with the value '10'.
     page.fill('#a', '10')
@@ -67,7 +123,8 @@ def test_calculator_divide_by_zero(page, fastapi_server):
     operations and provides meaningful feedback to the user.
     """
     # Navigate the browser to the homepage URL of the FastAPI application.
-    page.goto('http://localhost:8000')
+    login(page)  # Log in before accessing the calculator
+    page.goto('http://localhost:8000/calculator')
     
     # Fill in the first number input field (with id 'a') with the value '10'.
     page.fill('#a', '10')

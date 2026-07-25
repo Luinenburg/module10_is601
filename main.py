@@ -66,7 +66,7 @@ class RegisterResponse(BaseModel):
 
 class SessionResponse(BaseModel):
     token: str = Field(..., description="JWT token")
-    user_id: str = Field(..., description="User ID associated with the token")
+    username: str = Field(..., description="Username associated with the token")
 
 def SaveCalculation(calculation_data):
     db = database.SessionLocal()
@@ -111,12 +111,20 @@ async def read_register(request: Request):
     Serve the register.html template.
     """
     return templates.TemplateResponse("register.html", {"request": request})
+
 @app.get("/calculator")
 async def read_calc(request: Request):
     """
     Serve the calculator.html template.
     """
     return templates.TemplateResponse("calculator.html", {"request": request})
+
+@app.get("/auth")
+async def read_auth(request: Request):
+    """
+    Serve the auth.html template.
+    """
+    return templates.TemplateResponse("auth.html", {"request": request})
 
 @app.post("/add", response_model=OperationResponse, responses={400: {"model": ErrorResponse}})
 async def add_route(operation: OperationRequest):
@@ -300,16 +308,16 @@ async def delete_calculation(calculation_id: str):
         db.close()
 
 @app.post("/users/verify-token", response_model=SessionResponse, responses={401: {"model": ErrorResponse}})
-async def verify_token_route(token_data: SessionResponse):
+async def verify_token_route(token_data: LoginResponse):
     """
     Verify a JWT token and return the associated user ID.
     """
     db = database.SessionLocal()
     try:
-        user = User.find_token_in_users(db, token_data.condition)
+        user = User.find_token_in_users(db, token_data.token)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
-        return SessionResponse(token=token_data.condition, user_id=str(user.id))
+        return SessionResponse(token=token_data.token, username=user.username)
     finally:
         db.close()
 

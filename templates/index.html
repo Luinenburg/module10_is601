@@ -1,8 +1,39 @@
-{% extends "layout.html" %}
+<!DOCTYPE html> 
 
-{% block title %}Home{% endblock %}
+<html lang="en">
+<head>
+    
+    <meta charset="UTF-8">
 
-{% block content %}
-<h2>Welcome to the Calculations App</h2>
-<p>Please login or register to start using the application.</p>
-{% endblock %}
+    <title>wow dashboard</title>
+    
+    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        input {
+            margin: 5px;
+            padding: 5px;
+        }
+        
+        button {
+            padding: 5px 10px;
+        }
+        
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <button onclick="window.location.href='/login'">Login</button>
+    <button onclick="window.location.href='/register'">Register</button>
+    <button onclick="window.location.href='/auth'">Calculator</button>
+    <div class="result" id="result"></div>
+</body>
