@@ -1,5 +1,7 @@
 # main.py
 
+import uuid
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -37,6 +39,36 @@ class OperationRequest(BaseModel):
             raise ValueError('Both a and b must be numbers.')
         return value
 
+class CalculationRequest(BaseModel):
+    a: float = Field(..., description="The first number")
+    b: float = Field(..., description="The second number")
+    calculation_type: str = Field(..., description="Type of calculation (add, subtract, multiply, divide)")
+    user_id: Optional[str] = Field(default=None, description="User ID or JWT token associated with the calculation")
+
+    @field_validator('calculation_type')  # Correct decorator for Pydantic 1.x
+    def validate_calculation_type(cls, value):
+        if value not in {"add", "subtract", "multiply", "divide"}:
+            raise ValueError("calculation_type must be one of: add, subtract, multiply, divide")
+        return value
+
+    @field_validator('a', 'b')  # Correct decorator for Pydantic 1.x
+    def validate_numbers(cls, value):
+        if not isinstance(value, (int, float)):
+            raise ValueError('Both a and b must be numbers.')
+        return value
+
+    """
+    @field_validator('AuthToken')  # Correct decorator for Pydantic 1.x
+    def validate_user_id(cls, value):
+        db = database.SessionLocal()
+        try:
+            user = User.find_token_in_users(db, value)
+            if not user:
+                raise ValueError('Invalid user ID.')
+        finally:
+            db.close()
+    """
+
 class LoginRequest(BaseModel):
     username: str = Field(..., description="The username")
     password: str = Field(..., description="The password")
@@ -51,6 +83,14 @@ class RegisterRequest(BaseModel):
 # Pydantic model for successful response
 class OperationResponse(BaseModel):
     result: float = Field(..., description="The result of the operation")
+
+class CalculationResponse(BaseModel):
+    id: Optional[str] = Field(default=None, description="The ID of the calculation")
+    a: float = Field(..., description="The first number")
+    b: float = Field(..., description="The second number")
+    calculation_type: str = Field(..., description="Type of calculation")
+    result: float = Field(..., description="The result of the calculation")
+    user_id: Optional[str] = Field(default=None, description="User ID associated with the calculation")
 
 # Pydantic model for error response
 class ErrorResponse(BaseModel):
@@ -126,6 +166,13 @@ async def read_auth(request: Request):
     """
     return templates.TemplateResponse("auth.html", {"request": request})
 
+@app.get("/calc-history")
+async def read_calc_history(request: Request):
+    """
+    Serve the calculation_history.html template.
+    """
+    return templates.TemplateResponse("calculation_modify.html", {"request": request})
+
 @app.post("/add", response_model=OperationResponse, responses={400: {"model": ErrorResponse}})
 async def add_route(operation: OperationRequest):
     """
@@ -196,6 +243,57 @@ async def login_route(login_data: LoginRequest):
     finally:
         db.close()
 
+@app.post("/calculations", response_model=CalculationResponse, responses={400: {"model": ErrorResponse}})
+async def new_calculation(operation: CalculationRequest):
+    """
+    Create a new calculation record.
+    """
+    db = database.SessionLocal()
+    try:
+        result = None
+        match operation.calculation_type:
+            case "add":
+                result = add(operation.a, operation.b)
+            case "subtract":
+                result = subtract(operation.a, operation.b)
+            case "multiply":
+                result = multiply(operation.a, operation.b)
+            case "divide":
+                result = divide(operation.a, operation.b)
+
+        resolved_user_id = None
+        if operation.user_id:
+            try:
+                resolved_user_id = str(uuid.UUID(operation.user_id))
+            except ValueError:
+                user = User.find_token_in_users(db, operation.user_id)
+                if user:
+                    resolved_user_id = str(user.id)
+
+        calculation = Calculation.create(db, {
+            "a": operation.a,
+            "b": operation.b,
+            "calculation_type": operation.calculation_type,
+            "result": result,
+            "user_id": resolved_user_id,
+        })
+        db.commit()
+        db.refresh(calculation)
+        return CalculationResponse(
+            id=str(calculation.id),
+            a=calculation.a,
+            b=calculation.b,
+            calculation_type=calculation.calculation_type,
+            result=calculation.result,
+            user_id=str(calculation.user_id) if calculation.user_id is not None else None
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"New Calculation Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        db.close()
+
 @app.post("/users/register", response_model=RegisterResponse, responses={400: {"model": ErrorResponse}})
 async def register_route(register_data: RegisterRequest):
     """
@@ -230,7 +328,7 @@ async def register_route(register_data: RegisterRequest):
     finally:
         db.close()
 
-@app.get("/calculations/{user_id}", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
+@app.get("/calculations/{user_id}", response_model=list[CalculationResponse], responses={404: {"model": ErrorResponse}})
 async def get_user_calculations(user_id: str):
     """
     Retrieve all calculations for a specific user.
@@ -240,11 +338,18 @@ async def get_user_calculations(user_id: str):
         calculations = Calculation.get_user_calculation(db, user_id)
         if not calculations:
             raise HTTPException(status_code=404, detail="No calculations found for this user")
-        return [OperationResponse(result=calc.result) for calc in calculations]
+        return [CalculationResponse(
+            id=str(calc.id),
+            a=calc.a,
+            b=calc.b,
+            calculation_type=calc.calculation_type,
+            result=calc.result,
+            user_id=str(calc.user_id) if calc.user_id is not None else None
+        ) for calc in calculations]
     finally:
         db.close()
 
-@app.get("/calculations", response_model=list[OperationResponse], responses={404: {"model": ErrorResponse}})
+@app.get("/calculations", response_model=list[CalculationResponse], responses={404: {"model": ErrorResponse}})
 async def get_all_calculations():
     """
     Retrieve all calculations.
@@ -254,11 +359,18 @@ async def get_all_calculations():
         calculations = db.query(Calculation).all()
         if not calculations:
             raise HTTPException(status_code=404, detail="No calculations found")
-        return [OperationResponse(result=calc.result) for calc in calculations]
+        return [CalculationResponse(
+            id=str(calc.id),
+            a=calc.a,
+            b=calc.b,
+            calculation_type=calc.calculation_type,
+            result=calc.result,
+            user_id=str(calc.user_id) if calc.user_id is not None else None
+        ) for calc in calculations]
     finally:
         db.close()
 
-@app.patch("/calculations/{calculation_id}", response_model=OperationResponse, responses={404: {"model": ErrorResponse}})
+@app.patch("/calculations/{calculation_id}", response_model=CalculationResponse, responses={404: {"model": ErrorResponse}})
 async def update_calculation(calculation_id: str, operation: OperationRequest):
     """
     Update a specific calculation by ID.
@@ -286,11 +398,18 @@ async def update_calculation(calculation_id: str, operation: OperationRequest):
                 raise HTTPException(status_code=400, detail=str(e))
         
         db.commit()
-        return OperationResponse(result=calculation.result)
+        return CalculationResponse(
+            id=str(calculation.id),
+            a=calculation.a,
+            b=calculation.b,
+            calculation_type=calculation.calculation_type,
+            result=calculation.result,
+            user_id=str(calculation.user_id) if calculation.user_id is not None else None
+        )
     finally:
         db.close()
 
-@app.delete("/calculations/{calculation_id}", response_model=OperationResponse, responses={404: {"model": ErrorResponse}})
+@app.delete("/calculations/{calculation_id}", response_model=CalculationResponse, responses={404: {"model": ErrorResponse}})
 async def delete_calculation(calculation_id: str):
     """
     Delete a specific calculation by ID.
@@ -303,7 +422,14 @@ async def delete_calculation(calculation_id: str):
         
         db.delete(calculation)
         db.commit()
-        return OperationResponse(result=calculation.result)
+        return CalculationResponse(
+            id=str(calculation.id),
+            a=calculation.a,
+            b=calculation.b,
+            calculation_type=calculation.calculation_type,
+            result=calculation.result,
+            user_id=str(calculation.user_id) if calculation.user_id is not None else None
+        )
     finally:
         db.close()
 

@@ -3,6 +3,9 @@
 import pytest  # Import the pytest framework for writing and running tests
 from fastapi.testclient import TestClient  # Import TestClient for simulating API requests
 from main import app  # Import the FastAPI app instance from your main application file
+from app.models.calculation import Calculation
+from app.models.user import User
+import app.database as database
 
 # ---------------------------------------------
 # Pytest Fixture: client
@@ -152,3 +155,76 @@ def test_divide_by_zero_api(client):
     # Assert that the 'error' field contains the correct error message
     assert "Cannot divide by zero!" in response.json()['error'], \
         f"Expected error message 'Cannot divide by zero!', got '{response.json()['error']}'"
+
+
+def test_get_calculations_allows_missing_user_id(client):
+    """GET /calculations should serialize rows even when user_id is null."""
+    db = database.SessionLocal()
+    try:
+        calculation = Calculation(a=4, b=6, calculation_type="add", result=10, user_id=None)
+        db.add(calculation)
+        db.commit()
+        db.refresh(calculation)
+
+        response = client.get('/calculations')
+
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        matching = [item for item in payload if item['id'] == str(calculation.id)]
+        assert matching, "The newly created calculation should appear in the response"
+        assert matching[0]['user_id'] is None
+    finally:
+        db.close()
+
+
+def test_patch_calculation_by_uuid(client):
+    """PATCH /calculations/{id} should update an existing calculation when given a UUID."""
+    db = database.SessionLocal()
+    try:
+        calculation = Calculation(a=1, b=2, calculation_type="add", result=3, user_id=None)
+        db.add(calculation)
+        db.commit()
+        db.refresh(calculation)
+
+        response = client.patch(
+            f'/calculations/{calculation.id}',
+            json={'a': 3, 'b': 5}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()['result'] == 8
+        assert response.json()['id'] == str(calculation.id)
+    finally:
+        db.close()
+
+
+def test_create_calculation_accepts_jwt_as_user_id(client):
+    """POST /calculations should resolve a JWT to the owning user's UUID."""
+    db = database.SessionLocal()
+    try:
+        user = User(
+            first_name="Test",
+            last_name="User",
+            email="jwt-user@example.com",
+            username="jwt-user",
+            password_hash="unused"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = User.create_access_token({"sub": str(user.id)})
+
+        response = client.post('/calculations', json={
+            'a': 2,
+            'b': 3,
+            'calculation_type': 'add',
+            'user_id': token,
+        })
+
+        assert response.status_code == 200, response.text
+        created = db.query(Calculation).filter(Calculation.id == response.json()['id']).first()
+        assert created is not None
+        assert created.user_id == user.id
+    finally:
+        db.close()
