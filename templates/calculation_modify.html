@@ -1,0 +1,177 @@
+<!DOCTYPE html> 
+
+<html lang="en">
+<head>
+    <script>
+        if (!localStorage.getItem('auth_token')) {
+            window.location.href = '/auth';
+        } else {
+            const token = localStorage.getItem('auth_token');
+            fetch('/users/verify-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                'body': JSON.stringify({ token: token })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    localStorage.removeItem('auth_token');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Error verifying token:', error);
+                localStorage.removeItem('auth_token');
+                window.location.href = '/login';
+            });
+        }
+    </script>
+    
+    <meta charset="UTF-8">
+
+    <title>wow dashboard</title>
+    
+    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        input {
+            margin: 5px;
+            padding: 5px;
+        }
+        
+        button {
+            padding: 5px 10px;
+        }
+        
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <button onclick="window.location.href='/auth'">Return to Calculator</button><br>
+    <input type="text" id="calc-id" placeholder="Calculation to Change">
+    <input type="number" id="new-a" placeholder="New a">
+    <input type="number" id="new-b" placeholder="New b">
+    <input type="text" id="operation" placeholder="New Operation"><br>
+    <button onclick="updateCalculation()">Update Calculation</button>
+    <button onclick="deleteCalculation()">Delete Calculation</button>
+    <button onclick="newCalculation()">New Calculation</button><br>
+    <button onclick="refresh()">Refresh Calculations</button>
+    <div class="result" id="result"></div>
+    <script>
+        function updateCalculation() {
+            const calcId = document.getElementById('calc-id').value;
+            const newA = parseFloat(document.getElementById('new-a').value);
+            const newB = parseFloat(document.getElementById('new-b').value);
+            const operation = document.getElementById('operation').value;
+            const token = localStorage.getItem('auth_token');
+
+            fetch(`/calculations/${calcId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ id: calcId, a: newA, b: newB, calculation_type: operation })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('result').innerText = `Error: ${data.error}`;
+                } else {
+                    document.getElementById('result').innerText = `Updated Calculation: ${JSON.stringify(data)}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error updating calculation:', error);
+                document.getElementById('result').innerText = 'Error updating calculation.';
+            });
+        }
+
+        function newCalculation() {
+            const newA = parseFloat(document.getElementById('new-a').value);
+            const newB = parseFloat(document.getElementById('new-b').value);
+            const operation = document.getElementById('operation').value;
+            const token = localStorage.getItem('auth_token');
+
+            fetch('/calculations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ a: newA, b: newB, calculation_type: operation, user_id: localStorage.getItem('auth_token') })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('result').innerText = `Error: ${data.error}`;
+                } else {
+                    document.getElementById('result').innerText = `New Calculation: ${JSON.stringify(data)}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error creating calculation:', error);
+                document.getElementById('result').innerText = 'Error creating calculation.';
+            });
+        }
+
+        function deleteCalculation() {
+            const calcId = document.getElementById('calc-id').value;
+            const token = localStorage.getItem('auth_token');
+
+            fetch(`/calculations/${calcId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('result').innerText = `Error: ${data.error}`;
+                } else {
+                    document.getElementById('result').innerText = `Deleted Calculation: ${JSON.stringify(data)}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting calculation:', error);
+                document.getElementById('result').innerText = 'Error deleting calculation.';
+            });
+        }
+
+        function refresh() {
+            const token = localStorage.getItem('auth_token');
+
+            fetch('/calculations', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('result').innerText = `Error: ${data.error}`;
+                } else {
+                    document.getElementById('result').innerText = `Calculations: ${JSON.stringify(data)}`;
+                    document.getElementById('result').innerHTML = '<table border="1"><tr><th>ID</th><th>A</th><th>B</th><th>Operation</th><th>Result</th></tr> ' + data.map(calc => `<tr><td>${calc.id}</td><td>${calc.a}</td><td>${calc.b}</td><td>${calc.calculation_type}</td><td>${calc.result}</td></tr>`).join('') + '</table>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching calculations:', error);
+                document.getElementById('result').innerText = 'Error fetching calculations.';
+            });
+        }
+    </script>
+</body>

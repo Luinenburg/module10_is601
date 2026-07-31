@@ -25,7 +25,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 class Calculation(Base):
     __tablename__ = 'calculations'
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     a = Column(Float, nullable=False)
     b = Column(Float, nullable=False)
     calculation_type = Column(String(10), nullable=False)
@@ -43,8 +43,18 @@ class Calculation(Base):
         db.flush()
         return new_calculation
     
-    def get_by_id(cls, db, calculation_id: UUID) -> Optional["Calculation"]:
-        return db.query(cls).filter(cls.id == calculation_id).first()
+    @classmethod
+    def get_by_id(cls, db, calculation_id: str) -> Optional["Calculation"]:
+        try:
+            target_id = uuid.UUID(str(calculation_id))
+        except (ValueError, AttributeError):
+            return None
+        return db.query(cls).filter(cls.id == target_id).first()
     
-    def get_user_calculation(cls, db, user_id: UUID) -> list["Calculation"]:
-        return db.query(cls).filter(cls.user_id == user_id).first()
+    @classmethod
+    def get_user_calculation(cls, db, user_id: str) -> list["Calculation"]:
+        try:
+            target_user_id = uuid.UUID(str(user_id))
+        except (ValueError, AttributeError):
+            return []
+        return db.query(cls).filter(cls.user_id == target_user_id).all()
