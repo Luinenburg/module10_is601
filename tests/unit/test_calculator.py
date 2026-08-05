@@ -2,7 +2,7 @@
 
 import pytest  # Import the pytest framework for writing and running tests
 from typing import Union  # Import Union for type hinting multiple possible types
-from app.operations import add, subtract, multiply, divide  # Import the calculator functions from the operations module
+from app.operations import add, subtract, multiply, divide, exponentiate  # Import the calculator functions from the operations module
 
 # Define a type alias for numbers that can be either int or float
 Number = Union[int, float]
@@ -207,6 +207,27 @@ def test_divide(a: Number, b: Number, expected: float) -> None:
 # ---------------------------------------------
 # Negative Test Case: Division by Zero
 # ---------------------------------------------
+
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        (2, 3, 8),
+        (-2, 3, -8),
+        (2.0, 3.0, 8.0),
+        (9, 0.5, 3.0),
+    ],
+    ids=[
+        "exponentiate_positive_integers",
+        "exponentiate_negative_base",
+        "exponentiate_positive_floats",
+        "exponentiate_fractional_exponent",
+    ],
+)
+def test_exponentiate(a: Number, b: Number, expected: Number) -> None:
+    """Test exponentiation with a mix of integer and float inputs."""
+    result = exponentiate(a, b)
+    assert result == expected, f"Expected exponentiate({a}, {b}) to be {expected}, but got {result}"
+
 
 def test_divide_by_zero() -> None:
     """

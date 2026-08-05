@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator  # Use @validator for Pydantic 1.x
 from fastapi.exceptions import RequestValidationError
-from app.operations import add, subtract, multiply, divide  # Ensure correct import path
+from app.operations import add, subtract, multiply, divide, exponentiate  # Ensure correct import path
 from app.database_init import init_db, drop_db
 from app.models.user import User
 from app.models.calculation import Calculation
@@ -42,13 +42,13 @@ class OperationRequest(BaseModel):
 class CalculationRequest(BaseModel):
     a: float = Field(..., description="The first number")
     b: float = Field(..., description="The second number")
-    calculation_type: str = Field(..., description="Type of calculation (add, subtract, multiply, divide)")
+    calculation_type: str = Field(..., description="Type of calculation (add, subtract, multiply, divide, exponentiate)")
     user_id: Optional[str] = Field(default=None, description="User ID or JWT token associated with the calculation")
 
     @field_validator('calculation_type')  # Correct decorator for Pydantic 1.x
     def validate_calculation_type(cls, value):
-        if value not in {"add", "subtract", "multiply", "divide"}:
-            raise ValueError("calculation_type must be one of: add, subtract, multiply, divide")
+        if value not in {"add", "subtract", "multiply", "divide", "exponentiate"}:
+            raise ValueError("calculation_type must be one of: add, subtract, multiply, divide, exponentiate")
         return value
 
     @field_validator('a', 'b')  # Correct decorator for Pydantic 1.x
@@ -228,6 +228,19 @@ async def divide_route(operation: OperationRequest):
         logger.error(f"Divide Operation Internal Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+@app.post("/exponentiate", response_model=OperationResponse, responses={400: {"model": ErrorResponse}})
+async def exponentiate_route(operation: OperationRequest):
+    """
+    Exponentiate two numbers (a raised to the power of b).
+    """
+    try:
+        result = exponentiate(operation.a, operation.b)
+        SaveCalculation({"a": operation.a, "b": operation.b, "calculation_type": "exponentiate", "result": result})
+        return OperationResponse(result=result)
+    except Exception as e:
+        logger.error(f"Exponentiate Operation Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.post("/users/login", response_model=LoginResponse, responses={401: {"model": ErrorResponse}})
 async def login_route(login_data: LoginRequest):
     """
@@ -260,6 +273,10 @@ async def new_calculation(operation: CalculationRequest):
                 result = multiply(operation.a, operation.b)
             case "divide":
                 result = divide(operation.a, operation.b)
+            case "exponentiate":
+                result = exponentiate(operation.a, operation.b)
+            case _:
+                raise ValueError("Invalid calculation type")
 
         resolved_user_id = None
         if operation.user_id:
@@ -396,6 +413,10 @@ async def update_calculation(calculation_id: str, operation: OperationRequest):
                 calculation.result = divide(operation.a, operation.b)
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e))
+        elif calculation.calculation_type == "exponentiate":
+            calculation.result = exponentiate(operation.a, operation.b)
+        else:
+            raise ValueError("Invalid calculation type")
         
         db.commit()
         return CalculationResponse(

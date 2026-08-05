@@ -131,6 +131,14 @@ def test_divide_api(client):
 # Test Function: test_divide_by_zero_api
 # ---------------------------------------------
 
+def test_exponentiate_api(client):
+    """Test the Exponentiation API endpoint."""
+    response = client.post('/exponentiate', json={'a': 2, 'b': 3})
+
+    assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
+    assert response.json()['result'] == 8, f"Expected result 8, got {response.json()['result']}"
+
+
 def test_divide_by_zero_api(client):
     """
     Test the Division by Zero API Endpoint.
@@ -155,6 +163,19 @@ def test_divide_by_zero_api(client):
     # Assert that the 'error' field contains the correct error message
     assert "Cannot divide by zero!" in response.json()['error'], \
         f"Expected error message 'Cannot divide by zero!', got '{response.json()['error']}'"
+
+
+def test_create_calculation_accepts_exponentiate_type(client):
+    """POST /calculations should accept exponentiation calculations."""
+    response = client.post('/calculations', json={
+        'a': 2,
+        'b': 3,
+        'calculation_type': 'exponentiate',
+    })
+
+    assert response.status_code == 200, response.text
+    assert response.json()['result'] == 8
+    assert response.json()['calculation_type'] == 'exponentiate'
 
 
 def test_get_calculations_allows_missing_user_id(client):

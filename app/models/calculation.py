@@ -28,7 +28,7 @@ class Calculation(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     a = Column(Float, nullable=False)
     b = Column(Float, nullable=False)
-    calculation_type = Column(String(10), nullable=False)
+    calculation_type = Column(String(15), nullable=False)
     result = Column(Float, nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
